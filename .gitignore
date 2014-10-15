@@ -1,0 +1,12 @@
+*.built
+*.unpacked
+*.patched
+*.tar.*z*
+ndk.setup
+libgcrypt-1.6.2
+libgpg-error-1.16
+libnl-3.2.25
+libssh2-1.4.3
+libvirt-1.2.9
+libxml2-2.9.1
+portablexdr-4.9.1

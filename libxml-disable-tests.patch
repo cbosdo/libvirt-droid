@@ -1,0 +1,15 @@
+diff --git a/Makefile.am b/Makefile.am
+index 89748de..e5e75c0 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -12,8 +12,8 @@ AM_CFLAGS = $(THREAD_CFLAGS) $(Z_CFLAGS) $(LZMA_CFLAGS)
+ 
+ noinst_PROGRAMS=testSchemas testRelax testSAX testHTML testXPath testURI \
+                 testThreads testC14N testAutomata testRegexp \
+-                testReader testapi testModule runtest runsuite testchar \
+-		testdict runxmlconf testrecurse testlimits
++                testReader testapi testModule runsuite testchar \
++		testdict runxmlconf testlimits
+ 
+ bin_PROGRAMS = xmllint xmlcatalog
+ 

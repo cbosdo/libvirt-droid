@@ -1,0 +1,8 @@
+diff --git a/rpc/rpc.h b/rpc/rpc.h
+index ff3d05a..09b4309 100644
+--- a/rpc/rpc.h
++++ b/rpc/rpc.h
+@@ -1,3 +1,2 @@
+-#include "config.h"
+ #include <rpc/types.h>
+ #include <rpc/xdr.h>
