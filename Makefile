@@ -239,7 +239,27 @@ $(LIBVIRT).clean:
 	rm -f $(LIBVIRT).unpacked
 	rm -rf $(LIBVIRT)
 
-all: $(LIBVIRT).built
+# Rules to build jna
+JNA_VERSION=4.1.0
+JNA=jna-$(JNA_VERSION)
+$(JNA).tar.gz:
+	wget https://github.com/twall/jna/archive/$(JNA_VERSION).tar.gz
+	mv $(JNA_VERSION).tar.gz $@
+
+$(JNA).unpacked: $(JNA).tar.gz
+	tar xzf $<
+	touch $@
+
+$(JNA).built: $(JNA).unpacked
+	cd $(JNA) && ant -Dos.prefix=android-arm -Dbuild-native=true dist
+	touch $@
+
+$(JNA).clean:
+	rm -f $(JNA).built
+	rm -f $(JNA).unpacked
+	rm -rf $(JNA)
+
+all: $(LIBVIRT).built $(JNA).built
 
 clean: ndk.clean \
 	   $(XDR).clean \
@@ -248,4 +268,5 @@ clean: ndk.clean \
 	   $(GCRYPT).clean \
 	   $(LIBSSH).clean \
 	   $(NL).clean \
-	   $(LIBVIRT).clean
+	   $(LIBVIRT).clean \
+	   $(JNA).clean
