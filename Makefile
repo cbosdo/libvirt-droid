@@ -274,7 +274,7 @@ $(LIBVIRT_JAVA).unpacked: $(LIBVIRT_JAVA).tar.gz
 	touch $@
 
 $(LIBVIRT_JAVA).built: $(LIBVIRT_JAVA).unpacked
-	cd $(LIBVIRT_JAVA) && ant build -Djar.dir=../$(JNA)/dist
+	cd $(LIBVIRT_JAVA) && ant jar -Djar.dir=../$(JNA)/dist
 	touch $@
 
 $(LIBVIRT_JAVA).clean:
@@ -282,7 +282,21 @@ $(LIBVIRT_JAVA).clean:
 	rm -f $(LIBVIRT_JAVA).unpacked
 	rm -rf $(LIBVIRT_JAVA)
 
-all: $(LIBVIRT).built $(JNA).built $(LIBVIRT_JAVA).built
+libs.updated: $(LIBVIRT).built $(JNA).built $(LIBVIRT_JAVA).built 
+	rm -r LibvirtDroid/libs/*
+	# Create a jar with android-arm/libvirt.so
+	mkdir -p LibvirtDroid/libs/android-arm
+	cp $(realpath $(BUILDDIR)/lib/libvirt.so) LibvirtDroid/libs/android-arm
+	zip -r LibvirtDroid/libs/libvirt-android.jar LibvirtDroid/libs/android-arm
+	rm -rf LibvirtDroid/libs/android-arm
+	# Copy jna.jar
+	cp $(JNA)/dist/jna.jar LibvirtDroid/libs/
+	# TODO Strip the useless libjnidispatch from jna.jar
+	# Copy libvirt-java jar
+	cp $(LIBVIRT_JAVA)/target/libvirt-*.jar LibvirtDroid/libs/
+	touch $@
+
+all: libs.updated
 
 clean: ndk.clean \
 	   $(XDR).clean \

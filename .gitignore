@@ -3,6 +3,13 @@
 *.patched
 *.tar.*z*
 ndk.setup
+libs.updated
+LibvirtDroid/libs/*
+LibvirtDroid/bin
+LibvirtDroid/gen
+LibvirtDroid/local.properties
+LibvirtDroid/.classpath
+LibvirtDroid/.project
 libgcrypt-1.6.2
 libgpg-error-1.16
 libnl-3.2.25
