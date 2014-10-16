@@ -11,7 +11,7 @@ BUILDDIR=/tmp/ndk-build
 PATH:=$(BUILDDIR)/bin:$(BUILDDIR)/$(TARGET_TOOLCHAIN)/bin:$(PATH)
 
 # Disable shared libs for the dependencies to get a single libvirt.so containing it all
-CONFIGURE_FLAGS=--host=$(TARGET_TOOLCHAIN) --prefix $(BUILDDIR)
+CONFIGURE_FLAGS=--host=$(TARGET_TOOLCHAIN) --prefix $(BUILDDIR) --disable-shared
 
 ifeq ($(strip $(NDK_HOME)),)
 ndk.setup:
@@ -69,7 +69,7 @@ $(LIBXML2).unpacked: $(LIBXML2).tar.gz
 	tar xzf $<
 	touch $@
 
-$(LIBXML2).patched: $(LIBXML2).unpacked libxml-disable-tests.patch
+$(LIBXML2).patched: $(LIBXML2).unpacked libxml-disable-tests.patch 
 	cd $(LIBXML2) && patch -p1 <../libxml-disable-tests.patch
 	touch $@
 
@@ -250,16 +250,39 @@ $(JNA).unpacked: $(JNA).tar.gz
 	tar xzf $<
 	touch $@
 
-$(JNA).built: $(JNA).unpacked
-	cd $(JNA) && ant -Dos.prefix=android-arm -Dbuild-native=true dist
+$(JNA).patched: $(JNA).unpacked jna-android.patch
+	cd $(JNA) && patch -p1 <../jna-android.patch
+	touch $@
+
+$(JNA).built: $(JNA).patched
+	cd $(JNA) && ant dist
 	touch $@
 
 $(JNA).clean:
 	rm -f $(JNA).built
+	rm -f $(JNA).patched
 	rm -f $(JNA).unpacked
 	rm -rf $(JNA)
 
-all: $(LIBVIRT).built $(JNA).built
+# Rules to build libvirt-java
+LIBVIRT_JAVA=libvirt-java-0.5.1
+$(LIBVIRT_JAVA).tar.gz:
+	wget ftp://libvirt.org/libvirt/java/$@
+
+$(LIBVIRT_JAVA).unpacked: $(LIBVIRT_JAVA).tar.gz
+	tar xzf $<
+	touch $@
+
+$(LIBVIRT_JAVA).built: $(LIBVIRT_JAVA).unpacked
+	cd $(LIBVIRT_JAVA) && ant build -Djar.dir=../$(JNA)/dist
+	touch $@
+
+$(LIBVIRT_JAVA).clean:
+	rm -f $(LIBVIRT_JAVA).built
+	rm -f $(LIBVIRT_JAVA).unpacked
+	rm -rf $(LIBVIRT_JAVA)
+
+all: $(LIBVIRT).built $(JNA).built $(LIBVIRT_JAVA).built
 
 clean: ndk.clean \
 	   $(XDR).clean \
@@ -269,4 +292,5 @@ clean: ndk.clean \
 	   $(LIBSSH).clean \
 	   $(NL).clean \
 	   $(LIBVIRT).clean \
-	   $(JNA).clean
+	   $(JNA).clean \
+	   $(LIBVIRT_JAVA).clean

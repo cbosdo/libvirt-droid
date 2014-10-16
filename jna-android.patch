@@ -1,0 +1,37 @@
+diff --git a/build.xml b/build.xml
+index ed7c47c..6c1ff5d 100644
+--- a/build.xml
++++ b/build.xml
+@@ -411,6 +411,9 @@ processor=x86-64;osname=openbsd,
+ 
+ com/sun/jna/darwin/libjnidispatch.jnilib;
+ osname=macosx;processor=x86;processor=x86-64;processor=ppc
++
++com/sun/jna/android-arm/libjnidispatch.so;
++osname=android;processor=arm
+ "/>
+       </manifest>
+       <fileset dir="${classes}" excludes="${jar.omitted}">
+@@ -476,6 +479,9 @@ osname=macosx;processor=x86;processor=x86-64;processor=ppc
+       <zipfileset src="${lib.native}/w32ce-arm.jar"
+                   includes="*jnidispatch*"
+                   prefix="com/sun/jna/w32ce-arm"/>
++      <zipfileset src="${lib.native}/android-arm.jar"
++                  includes="*jnidispatch*"
++                  prefix="com/sun/jna/android-arm"/>
+     </jar>
+     <zip zipfile="${build}/${minjar}">
+       <zipfileset src="${build}/${jar}" excludes="**/*jnidispatch*"/>
+diff --git a/src/com/sun/jna/Native.java b/src/com/sun/jna/Native.java
+index 6bdf0db..ae995b1 100644
+--- a/src/com/sun/jna/Native.java
++++ b/src/com/sun/jna/Native.java
+@@ -858,7 +858,7 @@ public final class Native implements Version {
+                 throw new IOException("File URL " + url + " could not be properly decoded");
+             }
+         }
+-        else if (!Boolean.getBoolean("jna.nounpack")) {
++        else if (Boolean.getBoolean("jna.nounpack")) {
+             InputStream is = loader.getResourceAsStream(resourcePath);
+             if (is == null) {
+                 throw new IOException("Can't obtain InputStream for " + resourcePath);

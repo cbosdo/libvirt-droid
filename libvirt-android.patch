@@ -83,3 +83,16 @@ index 5197969..4ac0eca 100644
  
  /* Try to match a group id based on `group`. The default behavior is to parse
   * `group` first as a group name and then as a group id. However if `group`
+diff --git a/src/Makefile.am b/src/Makefile.am
+index e65177f..3c2f257 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -2020,6 +2020,8 @@ libvirt_la_LDFLAGS = \
+ 		-version-info $(LIBVIRT_VERSION_INFO) \
+ 		$(LIBVIRT_NODELETE) \
+ 		$(AM_LDFLAGS) \
++		$(SSH2_LIBS) \
++		$(LIBXML_LIBS) \
+ 		$(CYGWIN_EXTRA_LDFLAGS) \
+ 		$(MINGW_EXTRA_LDFLAGS) \
+ 		$(NULL)
