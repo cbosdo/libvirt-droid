@@ -2,8 +2,8 @@
 
 # These values match android NDK r10b, may be good to make that configurable
 TARGET_TOOLCHAIN=arm-linux-androideabi
-VERSION=4.9
-PLATFORM=android-L
+VERSION=4.6
+PLATFORM=android-9
 
 BUILDDIR=/tmp/ndk-build
 
@@ -159,29 +159,6 @@ $(LIBSSH).clean:
 	rm -rf $(LIBSSH)
 
 
-# Rules to build libnl
-NL=libnl-3.2.25
-$(NL).tar.gz:
-	wget http://www.infradead.org/~tgr/libnl/files/$@
-
-$(NL).unpacked: $(NL).tar.gz
-	tar xzf $<
-	touch $@
-
-$(NL).built: $(NL).unpacked
-	cd $(NL) && \
-	./configure $(CONFIGURE_FLAGS) \
-		--disable-pthreads --disable-cli && \
-	make && \
-	make install
-	touch $@
-
-$(NL).clean:
-	rm -f $(NL).built
-	rm -f $(NL).patched
-	rm -f $(NL).unpacked
-	rm -rf $(NL)
-
 # Rules to build libvirt
 
 LIBVIRT=libvirt-1.2.9
@@ -200,7 +177,7 @@ $(LIBVIRT).patched: $(LIBVIRT).unpacked \
 	cd $(LIBVIRT) && patch -p1 <../libvirt-android.patch
 	touch $@
 
-$(LIBVIRT).built: ndk.setup $(XDR).built $(LIBXML2).built $(LIBSSH).built $(NL).built $(LIBVIRT).patched
+$(LIBVIRT).built: ndk.setup $(XDR).built $(LIBXML2).built $(LIBSSH).built $(LIBVIRT).patched
 	cd $(LIBVIRT) && \
 	LDFLAGS="-L$(BUILDDIR)/lib" CFLAGS="-I$(BUILDDIR)/include" \
 	PKG_CONFIG_PATH="$(BUILDDIR)/lib/pkgconfig" \
@@ -228,7 +205,8 @@ $(LIBVIRT).built: ndk.setup $(XDR).built $(LIBXML2).built $(LIBSSH).built $(NL).
 				--without-audit --without-dtrace \
 				--without-driver-modules --with-init_script=redhat \
 				--without-curl --without-dbus \
-				--disable-werror && \
+				--without-libnl --disable-werror \
+				--without-test-suite && \
 	make && \
 	make install
 	touch $@
@@ -285,10 +263,10 @@ $(LIBVIRT_JAVA).clean:
 libs.updated: $(LIBVIRT).built $(JNA).built $(LIBVIRT_JAVA).built 
 	rm -r LibvirtDroid/libs/*
 	# Create a jar with android-arm/libvirt.so
-	mkdir -p LibvirtDroid/libs/android-arm
-	cp $(realpath $(BUILDDIR)/lib/libvirt.so) LibvirtDroid/libs/android-arm
-	zip -r LibvirtDroid/libs/libvirt-android.jar LibvirtDroid/libs/android-arm
-	rm -rf LibvirtDroid/libs/android-arm
+	mkdir android-arm
+	cp $(realpath $(BUILDDIR)/lib/libvirt.so) android-arm/libvirt.so
+	zip -r LibvirtDroid/libs/libvirt-android.jar android-arm
+	rm -rf android-arm
 	# Copy jna.jar
 	cp $(JNA)/dist/jna.jar LibvirtDroid/libs/
 	# TODO Strip the useless libjnidispatch from jna.jar
@@ -304,7 +282,6 @@ clean: ndk.clean \
 	   $(GPGERR).clean \
 	   $(GCRYPT).clean \
 	   $(LIBSSH).clean \
-	   $(NL).clean \
 	   $(LIBVIRT).clean \
 	   $(JNA).clean \
 	   $(LIBVIRT_JAVA).clean

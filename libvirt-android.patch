@@ -34,6 +34,24 @@ index 64195a4..b0d4a04 100644
  
      return 0;
  }
+@@ -2490,7 +2490,7 @@ vshTTYRestore(vshControl *ctl ATTRIBUTE_UNUSED)
+ }
+ 
+ 
+-#if !defined(WIN32) && !defined(HAVE_CFMAKERAW)
++#if !defined(WIN32) && !defined(HAVE_DECL_CFMAKERAW)
+ /* provide fallback in case cfmakeraw isn't available */
+ static void
+ cfmakeraw(struct termios *attr)
+@@ -2502,7 +2502,7 @@ cfmakeraw(struct termios *attr)
+     attr->c_cflag &= ~(CSIZE | PARENB);
+     attr->c_cflag |= CS8;
+ }
+-#endif /* !WIN32 && !HAVE_CFMAKERAW */
++#endif /* !WIN32 && !HAVE_DECL_CFMAKERAW */
+ 
+ 
+ int
 diff --git a/src/util/virutil.c b/src/util/virutil.c
 index 5197969..4ac0eca 100644
 --- a/src/util/virutil.c
@@ -96,3 +114,152 @@ index e65177f..3c2f257 100644
  		$(CYGWIN_EXTRA_LDFLAGS) \
  		$(MINGW_EXTRA_LDFLAGS) \
  		$(NULL)
+diff --git a/src/util/virfile.c b/src/util/virfile.c
+index b3b8be2..1a5627c 100644
+--- a/src/util/virfile.c
++++ b/src/util/virfile.c
+@@ -2944,6 +2944,8 @@ virFileGetHugepageSize(const char *path,
+ # define PROC_MEMINFO "/proc/meminfo"
+ # define HUGEPAGESIZE_STR "Hugepagesize:"
+ 
++/* Some android versions don't define setmntent */
++#ifdef setmntent
+ static int
+ virFileGetDefaultHugepageSize(unsigned long long *size)
+ {
+@@ -3038,6 +3040,15 @@ virFileFindHugeTLBFS(virHugeTLBFSPtr *ret_fs,
+     VIR_FREE(fs);
+     return ret;
+ }
++#else /* defined setmntent */
++int
++virFileFindHugeTLBFS(virHugeTLBFSPtr *ret_fs,
++                     size_t *ret_nfs)
++{
++    virReportUnsupportedError();
++    return -1;
++}
++#endif /* defined setmntent */
+ 
+ #else /* defined __linux__ */
+ 
+diff --git a/src/nodeinfo.c b/src/nodeinfo.c
+index 2e2fffa..c50f0ff 100644
+--- a/src/nodeinfo.c
++++ b/src/nodeinfo.c
+@@ -339,6 +339,9 @@ virNodeGetCpuValue(const char *dir, unsigned int cpu, const char *file,
+     return value;
+ }
+ 
++/* Most Android version don't define cpu_set_t */
++# ifdef cpu_set_t
++
+ static unsigned long
+ virNodeCountThreadSiblings(const char *dir, unsigned int cpu)
+ {
+@@ -404,7 +407,7 @@ virNodeParseSocket(const char *dir,
+     return ret;
+ }
+ 
+-# ifndef CPU_COUNT
++#  ifndef CPU_COUNT
+ static int
+ CPU_COUNT(cpu_set_t *set)
+ {
+@@ -415,7 +418,7 @@ CPU_COUNT(cpu_set_t *set)
+             count++;
+     return count;
+ }
+-# endif /* !CPU_COUNT */
++#  endif /* !CPU_COUNT */
+ 
+ /* parses a node entry, returning number of processors in the node and
+  * filling arguments */
+@@ -556,7 +559,22 @@ virNodeParseNode(const char *node,
+ 
+     return ret;
+ }
+-
++# else /* !defined cpu_set_t */
++static int
++ATTRIBUTE_NONNULL(1) ATTRIBUTE_NONNULL(3)
++ATTRIBUTE_NONNULL(4) ATTRIBUTE_NONNULL(5)
++ATTRIBUTE_NONNULL(6)
++virNodeParseNode(const char *node ATTRIBUTE_UNUSED,
++                 virArch arch ATTRIBUTE_UNUSED,
++                 int *sockets ATTRIBUTE_UNUSED,
++                 int *cores ATTRIBUTE_UNUSED,
++                 int *threads ATTRIBUTE_UNUSED,
++                 int *offline ATTRIBUTE_UNUSED)
++{
++    virReportUnsupportedError();
++    return -1;
++}
++# endif /* defined cpu_set_t */
+ int linuxNodeInfoCPUPopulate(FILE *cpuinfo,
+                              const char *sysfs_dir,
+                              virArch arch,
+diff --git a/configure.ac b/configure.ac
+index ec7159b..db48da3 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -272,11 +272,13 @@ AC_CHECK_SIZEOF([long])
+ 
+ dnl Availability of various common functions (non-fatal if missing),
+ dnl and various less common threadsafe functions
+-AC_CHECK_FUNCS_ONCE([cfmakeraw fallocate geteuid getgid getgrnam_r \
++AC_CHECK_FUNCS_ONCE([fallocate geteuid getgid getgrnam_r \
+   getmntent_r getpwuid_r getuid kill mmap newlocale posix_fallocate \
+   posix_memalign prlimit regexec sched_getaffinity setgroups setns \
+   setrlimit symlink sysctlbyname getifaddrs])
+ 
++AC_CHECK_DECLS([cfmakeraw],[],[],[[#include <termios.h>]])
++
+ dnl Availability of pthread functions. Because of $LIB_PTHREAD, we
+ dnl cannot use AC_CHECK_FUNCS_ONCE. LIB_PTHREAD and LIBMULTITHREAD
+ dnl were set during gl_INIT by gnulib.
+@@ -2582,7 +2584,12 @@ dnl netlink library
+ 
+ have_libnl=no
+ 
+-if test "$with_linux" = "yes"; then
++AC_ARG_WITH([libnl],
++            [AS_HELP_STRING([--with-libnl],
++                            [Enable libnl support @<:@default=check@:>@])],
++            [with_libnl=${withval}],[with_libnl=check])
++
++if test "$with_libnl" != "no" && "$with_linux" = "yes"; then
+     # When linking with netcf, we must ensure that we pick the same version
+     # of libnl that netcf picked.  Prefer libnl-3 unless we can prove
+     # netcf linked against libnl-1, or unless the user set LIBNL_CFLAGS.
+diff --git a/src/fdstream.c b/src/fdstream.c
+index 9ff7e2a..24dfff6 100644
+--- a/src/fdstream.c
++++ b/src/fdstream.c
+@@ -720,7 +720,7 @@ int virFDStreamCreateFile(virStreamPtr st,
+                                        false);
+ }
+ 
+-#ifdef HAVE_CFMAKERAW
++#ifdef HAVE_DECL_CFMAKERAW
+ int virFDStreamOpenPTY(virStreamPtr st,
+                        const char *path,
+                        unsigned long long offset,
+@@ -760,7 +760,7 @@ int virFDStreamOpenPTY(virStreamPtr st,
+     virFDStreamClose(st);
+     return -1;
+ }
+-#else /* !HAVE_CFMAKERAW */
++#else /* !HAVE_DECL_CFMAKERAW */
+ int virFDStreamOpenPTY(virStreamPtr st,
+                        const char *path,
+                        unsigned long long offset,
+@@ -772,7 +772,7 @@ int virFDStreamOpenPTY(virStreamPtr st,
+                                        oflags | O_CREAT, 0,
+                                        false);
+ }
+-#endif /* !HAVE_CFMAKERAW */
++#endif /* !HAVE_DECL_CFMAKERAW */
+ 
+ int virFDStreamOpenBlockDevice(virStreamPtr st,
+                                const char *path,
