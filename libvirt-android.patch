@@ -1,106 +1,36 @@
-diff --git a/src/util/virthread.c b/src/util/virthread.c
-index 7e841d1..41c650b 100644
---- a/src/util/virthread.c
-+++ b/src/util/virthread.c
-@@ -284,7 +284,11 @@ void virThreadJoin(virThreadPtr thread)
+diff --git a/configure.ac b/configure.ac
+index 0062d5d..3e9a71b 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -272,11 +272,13 @@ AC_CHECK_SIZEOF([long])
  
- void virThreadCancel(virThreadPtr thread)
- {
-+#ifdef pthread_cancel
-     pthread_cancel(thread->thread);
-+#else
-+    pthread_kill(thread->thread, SIGUSR1);
-+#endif
- }
+ dnl Availability of various common functions (non-fatal if missing),
+ dnl and various less common threadsafe functions
+-AC_CHECK_FUNCS_ONCE([cfmakeraw fallocate geteuid getgid getgrnam_r \
++AC_CHECK_FUNCS_ONCE([fallocate geteuid getgid getgrnam_r getpwuid \
+   getmntent_r getpwuid_r getuid kill mmap newlocale posix_fallocate \
+   posix_memalign prlimit regexec sched_getaffinity setgroups setns \
+   setrlimit symlink sysctlbyname getifaddrs])
  
- int virThreadLocalInit(virThreadLocalPtr l,
-diff --git a/tools/virsh.c b/tools/virsh.c
-index 64195a4..b0d4a04 100644
---- a/tools/virsh.c
-+++ b/tools/virsh.c
-@@ -2453,6 +2453,7 @@ int
- vshTTYDisableInterrupt(vshControl *ctl ATTRIBUTE_UNUSED)
- {
- #ifndef WIN32
-+#ifdef _POSIX_VDISABLE
-     struct termios termset = ctl->termattr;
++AC_CHECK_DECLS([cfmakeraw],[],[],[[#include <termios.h>]])
++
+ dnl Availability of pthread functions. Because of $LIB_PTHREAD, we
+ dnl cannot use AC_CHECK_FUNCS_ONCE. LIB_PTHREAD and LIBMULTITHREAD
+ dnl were set during gl_INIT by gnulib.
+@@ -2576,7 +2578,12 @@ dnl netlink library
  
-     if (!ctl->istty)
-@@ -2468,6 +2469,7 @@ vshTTYDisableInterrupt(vshControl *ctl ATTRIBUTE_UNUSED)
-     if (tcsetattr(STDIN_FILENO, TCSANOW, &termset) < 0)
-         return -1;
- #endif
-+#endif
+ have_libnl=no
  
-     return 0;
- }
-@@ -2490,7 +2490,7 @@ vshTTYRestore(vshControl *ctl ATTRIBUTE_UNUSED)
- }
- 
- 
--#if !defined(WIN32) && !defined(HAVE_CFMAKERAW)
-+#if !defined(WIN32) && !defined(HAVE_DECL_CFMAKERAW)
- /* provide fallback in case cfmakeraw isn't available */
- static void
- cfmakeraw(struct termios *attr)
-@@ -2502,7 +2502,7 @@ cfmakeraw(struct termios *attr)
-     attr->c_cflag &= ~(CSIZE | PARENB);
-     attr->c_cflag |= CS8;
- }
--#endif /* !WIN32 && !HAVE_CFMAKERAW */
-+#endif /* !WIN32 && !HAVE_DECL_CFMAKERAW */
- 
- 
- int
-diff --git a/src/util/virutil.c b/src/util/virutil.c
-index 5197969..4ac0eca 100644
---- a/src/util/virutil.c
-+++ b/src/util/virutil.c
-@@ -767,6 +767,7 @@ virGetUserEnt(uid_t uid, char **name, gid_t *group, char **dir)
-     return ret;
- }
- 
-+#ifdef getgrgid_r
- static char *virGetGroupEnt(gid_t gid)
- {
-     char *strbuf;
-@@ -816,6 +817,13 @@ static char *virGetGroupEnt(gid_t gid)
-     VIR_FREE(strbuf);
-     return ret;
- }
-+#else
-+static char *virGetGroupEnt(gid_t gid ATTRIBUTE_UNUSED)
-+{
-+    virReportSystemError(ENOSYS, "%s", _("Not supported on this platform"));
-+    return -1;
-+}
-+#endif
- 
- 
- char *
-@@ -964,6 +972,7 @@ virGetUserID(const char *user, uid_t *uid)
- /* Search in the group database for a group id that matches the group name
-  * `name`. Returns 0 on success, -1 on failure or 1 if name cannot be found.
-  */
-+#if getgrnam_r
- static int
- virGetGroupIDByName(const char *name, gid_t *gid)
- {
-@@ -1009,6 +1018,14 @@ virGetGroupIDByName(const char *name, gid_t *gid)
- 
-     return ret;
- }
-+#else
-+static int
-+virGetGroupIDByName(const char *namei ATTRIBUTE_UNUSED, gid_t *gid ATTRIBUTE_UNUSED)
-+{
-+    virReportSystemError(ENOSYS, "%s", _("Not supported on this platform"));
-+    return -1;
-+}
-+#endif
- 
- /* Try to match a group id based on `group`. The default behavior is to parse
-  * `group` first as a group name and then as a group id. However if `group`
+-if test "$with_linux" = "yes"; then
++AC_ARG_WITH([libnl],
++            [AS_HELP_STRING([--with-libnl],
++                            [Enable libnl support @<:@default=check@:>@])],
++            [with_libnl=${withval}],[with_libnl=check])
++
++if test "$with_libnl" != "no" && "$with_linux" = "yes"; then
+     # When linking with netcf, we must ensure that we pick the same version
+     # of libnl that netcf picked.  Prefer libnl-3 unless we can prove
+     # netcf linked against libnl-1, or unless the user set LIBNL_CFLAGS.
 diff --git a/src/Makefile.am b/src/Makefile.am
 index e65177f..3c2f257 100644
 --- a/src/Makefile.am
@@ -114,35 +44,37 @@ index e65177f..3c2f257 100644
  		$(CYGWIN_EXTRA_LDFLAGS) \
  		$(MINGW_EXTRA_LDFLAGS) \
  		$(NULL)
-diff --git a/src/util/virfile.c b/src/util/virfile.c
-index b3b8be2..1a5627c 100644
---- a/src/util/virfile.c
-+++ b/src/util/virfile.c
-@@ -2944,6 +2944,8 @@ virFileGetHugepageSize(const char *path,
- # define PROC_MEMINFO "/proc/meminfo"
- # define HUGEPAGESIZE_STR "Hugepagesize:"
- 
-+/* Some android versions don't define setmntent */
-+#ifdef setmntent
- static int
- virFileGetDefaultHugepageSize(unsigned long long *size)
- {
-@@ -3038,6 +3040,15 @@ virFileFindHugeTLBFS(virHugeTLBFSPtr *ret_fs,
-     VIR_FREE(fs);
-     return ret;
+diff --git a/src/fdstream.c b/src/fdstream.c
+index 9ff7e2a..24dfff6 100644
+--- a/src/fdstream.c
++++ b/src/fdstream.c
+@@ -720,7 +720,7 @@ int virFDStreamCreateFile(virStreamPtr st,
+                                        false);
  }
-+#else /* defined setmntent */
-+int
-+virFileFindHugeTLBFS(virHugeTLBFSPtr *ret_fs,
-+                     size_t *ret_nfs)
-+{
-+    virReportUnsupportedError();
-+    return -1;
-+}
-+#endif /* defined setmntent */
  
- #else /* defined __linux__ */
+-#ifdef HAVE_CFMAKERAW
++#ifdef HAVE_DECL_CFMAKERAW
+ int virFDStreamOpenPTY(virStreamPtr st,
+                        const char *path,
+                        unsigned long long offset,
+@@ -760,7 +760,7 @@ int virFDStreamOpenPTY(virStreamPtr st,
+     virFDStreamClose(st);
+     return -1;
+ }
+-#else /* !HAVE_CFMAKERAW */
++#else /* !HAVE_DECL_CFMAKERAW */
+ int virFDStreamOpenPTY(virStreamPtr st,
+                        const char *path,
+                        unsigned long long offset,
+@@ -772,7 +772,7 @@ int virFDStreamOpenPTY(virStreamPtr st,
+                                        oflags | O_CREAT, 0,
+                                        false);
+ }
+-#endif /* !HAVE_CFMAKERAW */
++#endif /* !HAVE_DECL_CFMAKERAW */
  
+ int virFDStreamOpenBlockDevice(virStreamPtr st,
+                                const char *path,
 diff --git a/src/nodeinfo.c b/src/nodeinfo.c
 index 2e2fffa..c50f0ff 100644
 --- a/src/nodeinfo.c
@@ -199,67 +131,258 @@ index 2e2fffa..c50f0ff 100644
  int linuxNodeInfoCPUPopulate(FILE *cpuinfo,
                               const char *sysfs_dir,
                               virArch arch,
-diff --git a/configure.ac b/configure.ac
-index ec7159b..db48da3 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -272,11 +272,13 @@ AC_CHECK_SIZEOF([long])
+diff --git a/src/util/virfile.c b/src/util/virfile.c
+index b3b8be2..1a5627c 100644
+--- a/src/util/virfile.c
++++ b/src/util/virfile.c
+@@ -2944,6 +2944,8 @@ virFileGetHugepageSize(const char *path,
+ # define PROC_MEMINFO "/proc/meminfo"
+ # define HUGEPAGESIZE_STR "Hugepagesize:"
  
- dnl Availability of various common functions (non-fatal if missing),
- dnl and various less common threadsafe functions
--AC_CHECK_FUNCS_ONCE([cfmakeraw fallocate geteuid getgid getgrnam_r \
-+AC_CHECK_FUNCS_ONCE([fallocate geteuid getgid getgrnam_r \
-   getmntent_r getpwuid_r getuid kill mmap newlocale posix_fallocate \
-   posix_memalign prlimit regexec sched_getaffinity setgroups setns \
-   setrlimit symlink sysctlbyname getifaddrs])
++/* Some android versions don't define setmntent */
++#ifdef setmntent
+ static int
+ virFileGetDefaultHugepageSize(unsigned long long *size)
+ {
+@@ -3038,6 +3040,15 @@ virFileFindHugeTLBFS(virHugeTLBFSPtr *ret_fs,
+     VIR_FREE(fs);
+     return ret;
+ }
++#else /* defined setmntent */
++int
++virFileFindHugeTLBFS(virHugeTLBFSPtr *ret_fs,
++                     size_t *ret_nfs)
++{
++    virReportUnsupportedError();
++    return -1;
++}
++#endif /* defined setmntent */
  
-+AC_CHECK_DECLS([cfmakeraw],[],[],[[#include <termios.h>]])
+ #else /* defined __linux__ */
+ 
+diff --git a/src/util/virthread.c b/src/util/virthread.c
+index 7e841d1..41c650b 100644
+--- a/src/util/virthread.c
++++ b/src/util/virthread.c
+@@ -284,7 +284,11 @@ void virThreadJoin(virThreadPtr thread)
+ 
+ void virThreadCancel(virThreadPtr thread)
+ {
++#ifdef pthread_cancel
+     pthread_cancel(thread->thread);
++#else
++    pthread_kill(thread->thread, SIGUSR1);
++#endif
+ }
+ 
+ int virThreadLocalInit(virThreadLocalPtr l,
+diff --git a/src/util/virutil.c b/src/util/virutil.c
+index 5197969..806983d 100644
+--- a/src/util/virutil.c
++++ b/src/util/virutil.c
+@@ -49,7 +49,7 @@
+ # include <paths.h>
+ #endif
+ #include <netdb.h>
+-#ifdef HAVE_GETPWUID_R
++#if defined(HAVE_GETPWUID_R) || defined(HAVE_GETPWUID)
+ # include <pwd.h>
+ # include <grp.h>
+ #endif
+@@ -702,9 +702,10 @@ virGetUserDirectory(void)
+ }
+ 
+ 
+-#ifdef HAVE_GETPWUID_R
++#if defined(HAVE_GETPWUID_R) || defined(HAVE_GETPWUID)
+ /* Look up fields from the user database for the given user.  On
+  * error, set errno, report the error, and return -1.  */
++#ifdef HAVE_GETPWUID_R
+ static int
+ virGetUserEnt(uid_t uid, char **name, gid_t *group, char **dir)
+ {
+@@ -766,7 +767,50 @@ virGetUserEnt(uid_t uid, char **name, gid_t *group, char **dir)
+     VIR_FREE(strbuf);
+     return ret;
+ }
++#else
++static int
++virGetUserEnt(uid_t uid, char **name, gid_t *group, char **dir)
++{
++    struct passwd *pw = NULL;
++    int ret = -1;
 +
- dnl Availability of pthread functions. Because of $LIB_PTHREAD, we
- dnl cannot use AC_CHECK_FUNCS_ONCE. LIB_PTHREAD and LIBMULTITHREAD
- dnl were set during gl_INIT by gnulib.
-@@ -2582,7 +2584,12 @@ dnl netlink library
- 
- have_libnl=no
- 
--if test "$with_linux" = "yes"; then
-+AC_ARG_WITH([libnl],
-+            [AS_HELP_STRING([--with-libnl],
-+                            [Enable libnl support @<:@default=check@:>@])],
-+            [with_libnl=${withval}],[with_libnl=check])
++    if (name)
++        *name = NULL;
++    if (dir)
++        *dir = NULL;
 +
-+if test "$with_libnl" != "no" && "$with_linux" = "yes"; then
-     # When linking with netcf, we must ensure that we pick the same version
-     # of libnl that netcf picked.  Prefer libnl-3 unless we can prove
-     # netcf linked against libnl-1, or unless the user set LIBNL_CFLAGS.
-diff --git a/src/fdstream.c b/src/fdstream.c
-index 9ff7e2a..24dfff6 100644
---- a/src/fdstream.c
-+++ b/src/fdstream.c
-@@ -720,7 +720,7 @@ int virFDStreamCreateFile(virStreamPtr st,
-                                        false);
++    /*
++     * From the manpage (terrifying but true):
++     *
++     * ERRORS
++     *  0 or ENOENT or ESRCH or EBADF or EPERM or ...
++     *        The given name or uid was not found.
++     */
++    if ((pw = getpwuid(uid)) == NULL) {
++        virReportSystemError(errno,
++                             _("Failed to find user record for uid '%u'"),
++                             (unsigned int) uid);
++        goto cleanup;
++    }
++
++    if (name && VIR_STRDUP(*name, pw->pw_name) < 0)
++        goto cleanup;
++    if (group)
++        *group = pw->pw_gid;
++    if (dir && VIR_STRDUP(*dir, pw->pw_dir) < 0) {
++        if (name)
++            VIR_FREE(*name);
++        goto cleanup;
++    }
++
++    ret = 0;
++ cleanup:
++    return ret;
++}
++#endif
++
+ 
++#ifdef HAVE_GETGRGID_R
+ static char *virGetGroupEnt(gid_t gid)
+ {
+     char *strbuf;
+@@ -816,6 +860,23 @@ static char *virGetGroupEnt(gid_t gid)
+     VIR_FREE(strbuf);
+     return ret;
+ }
++#else
++static char *virGetGroupEnt(gid_t gid ATTRIBUTE_UNUSED)
++{
++    char *ret;
++    struct group *gr = NULL;
++
++    if ((gr = getgrgid(gid)) == NULL) {
++            virReportSystemError(errno,
++                                 _("Failed to find group record for gid '%u'"),
++                                 (unsigned int) gid);
++        return NULL;
++    }
++
++    ignore_value(VIR_STRDUP(ret, gr->gr_name));
++    return ret;
++}
++#endif
+ 
+ 
+ char *
+@@ -884,6 +945,7 @@ char *virGetGroupName(gid_t gid)
+ /* Search in the password database for a user id that matches the user name
+  * `name`. Returns 0 on success, -1 on failure or 1 if name cannot be found.
+  */
++#ifdef GETPWUID_R
+ static int
+ virGetUserIDByName(const char *name, uid_t *uid)
+ {
+@@ -929,6 +991,27 @@ virGetUserIDByName(const char *name, uid_t *uid)
+ 
+     return ret;
+ }
++#else
++static int
++virGetUserIDByName(const char *name, uid_t *uid)
++{
++    struct passwd *pw = NULL;
++
++    if ((pw = getpwnam(name)) == NULL) {
++        char buf[1024];
++        /* log the possible error from getpwnam. Unfortunately error
++         * reporting from this function is bad and we can't really
++         * rely on it, so we just report that the user wasn't found */
++        VIR_WARN("User record for user '%s' was not found: %s",
++                 name, virStrerror(errno, buf, sizeof(buf)));
++
++        return -1;
++    }
++
++    *uid = pw->pw_uid;
++    return 0;
++}
++#endif
+ 
+ /* Try to match a user id based on `user`. The default behavior is to parse
+  * `user` first as a user name and then as a user id. However if `user`
+@@ -964,6 +1047,7 @@ virGetUserID(const char *user, uid_t *uid)
+ /* Search in the group database for a group id that matches the group name
+  * `name`. Returns 0 on success, -1 on failure or 1 if name cannot be found.
+  */
++#ifdef HAVE_GETGRNAM_R
+ static int
+ virGetGroupIDByName(const char *name, gid_t *gid)
+ {
+@@ -1009,6 +1093,27 @@ virGetGroupIDByName(const char *name, gid_t *gid)
+ 
+     return ret;
+ }
++#else
++static int
++virGetGroupIDByName(const char *name, gid_t *gid)
++{
++    struct group *gr = NULL;
++
++    if ((gr = getgrnam(name)) == NULL) {
++        char buf[1024];
++        /* log the possible error from getgrnam_r. Unfortunately error
++         * reporting from this function is bad and we can't really
++         * rely on it, so we just report that the user wasn't found */
++        VIR_WARN("Group record for user '%s' was not found: %s",
++                 name, virStrerror(errno, buf, sizeof(buf)));
++
++        return 1;
++    }
++
++    *gid = gr->gr_gid;
++    return 0;
++}
++#endif
+ 
+ /* Try to match a group id based on `group`. The default behavior is to parse
+  * `group` first as a group name and then as a group id. However if `group`
+diff --git a/tools/virsh.c b/tools/virsh.c
+index 64195a4..ad485f2 100644
+--- a/tools/virsh.c
++++ b/tools/virsh.c
+@@ -2453,6 +2453,7 @@ int
+ vshTTYDisableInterrupt(vshControl *ctl ATTRIBUTE_UNUSED)
+ {
+ #ifndef WIN32
++#ifdef _POSIX_VDISABLE
+     struct termios termset = ctl->termattr;
+ 
+     if (!ctl->istty)
+@@ -2468,6 +2469,7 @@ vshTTYDisableInterrupt(vshControl *ctl ATTRIBUTE_UNUSED)
+     if (tcsetattr(STDIN_FILENO, TCSANOW, &termset) < 0)
+         return -1;
+ #endif
++#endif
+ 
+     return 0;
+ }
+@@ -2488,7 +2490,7 @@ vshTTYRestore(vshControl *ctl ATTRIBUTE_UNUSED)
  }
  
--#ifdef HAVE_CFMAKERAW
-+#ifdef HAVE_DECL_CFMAKERAW
- int virFDStreamOpenPTY(virStreamPtr st,
-                        const char *path,
-                        unsigned long long offset,
-@@ -760,7 +760,7 @@ int virFDStreamOpenPTY(virStreamPtr st,
-     virFDStreamClose(st);
-     return -1;
- }
--#else /* !HAVE_CFMAKERAW */
-+#else /* !HAVE_DECL_CFMAKERAW */
- int virFDStreamOpenPTY(virStreamPtr st,
-                        const char *path,
-                        unsigned long long offset,
-@@ -772,7 +772,7 @@ int virFDStreamOpenPTY(virStreamPtr st,
-                                        oflags | O_CREAT, 0,
-                                        false);
- }
--#endif /* !HAVE_CFMAKERAW */
-+#endif /* !HAVE_DECL_CFMAKERAW */
  
- int virFDStreamOpenBlockDevice(virStreamPtr st,
-                                const char *path,
+-#if !defined(WIN32) && !defined(HAVE_CFMAKERAW)
++#if !defined(WIN32) && !defined(HAVE_DECL_CFMAKERAW)
+ /* provide fallback in case cfmakeraw isn't available */
+ static void
+ cfmakeraw(struct termios *attr)
+@@ -2500,7 +2502,7 @@ cfmakeraw(struct termios *attr)
+     attr->c_cflag &= ~(CSIZE | PARENB);
+     attr->c_cflag |= CS8;
+ }
+-#endif /* !WIN32 && !HAVE_CFMAKERAW */
++#endif /* !WIN32 && !HAVE_DECL_CFMAKERAW */
+ 
+ 
+ int
