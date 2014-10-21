@@ -386,3 +386,30 @@ index 64195a4..ad485f2 100644
  
  
  int
+diff --git a/src/rpc/virnetsshsession.c b/src/rpc/virnetsshsession.c
+index 7f47b29..57119f9 100644
+--- a/src/rpc/virnetsshsession.c
++++ b/src/rpc/virnetsshsession.c
+@@ -303,6 +303,7 @@ virNetSSHCheckHostKey(virNetSSHSessionPtr sess)
+     virConnectCredential askKey;
+     struct libssh2_knownhost *knownHostEntry = NULL;
+     size_t i;
++    bool hasEchoPrompt = false;
+     char *hostnameStr = NULL;
+ 
+     if (sess->hostKeyVerify == VIR_NET_SSH_HOSTKEY_VERIFY_IGNORE)
+@@ -345,12 +346,12 @@ virNetSSHCheckHostKey(virNetSSHSessionPtr sess)
+ 
+             for (i = 0; i < sess->cred->ncredtype; i++) {
+                 if (sess->cred->credtype[i] == VIR_CRED_ECHOPROMPT) {
+-                    i = -1;
++                    hasEchoPrompt = true;
+                     break;
+                 }
+             }
+ 
+-            if (i > 0) {
++            if (!hasEchoPrompt) {
+                 virReportError(VIR_ERR_SSH, "%s",
+                                _("no suitable method to retrieve "
+                                  "authentication credentials"));
