@@ -235,10 +235,12 @@ $(JNA).unpacked: $(JNA).tar.gz
 
 $(JNA).patched: $(JNA).unpacked jna-android.patch
 	cd $(JNA) && patch -p1 <../jna-android.patch
+	# TODO This patch should not be applied for release build
+	cd $(JNA) && patch -p1 <../jna-debug.patch
 	touch $@
 
 $(JNA).built: $(JNA).patched
-	cd $(JNA) && ant -Dos.prefix=android-arm -Dbuild-native=true dist
+	cd $(JNA) && ant -Dos.prefix=android-arm -Dbuild-native=true -Ddebug.native=true dist
 	touch $@
 
 $(JNA).clean:
@@ -280,7 +282,7 @@ libs.updated: $(LIBVIRT).built $(JNA).built $(LIBVIRT_JAVA).built
 
 all: ndk.setup libs.updated
 	cd LibvirtDroid && \
-	$(NDK_HOME)/ndk-build && \
+	NDK_DEBUG=1 $(NDK_HOME)/ndk-build && \
 	ant debug
 	
 

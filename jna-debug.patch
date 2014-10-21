@@ -1,0 +1,12 @@
+diff --git a/native/Makefile b/native/Makefile
+index 44d9320..169a318 100644
+--- a/native/Makefile
++++ b/native/Makefile
+@@ -394,7 +394,6 @@ $(BUILD)/$(JNA_JNI_VERSION).stamp:
+ 
+ $(LIBRARY): $(JNIDISPATCH_OBJS) $(FFI_LIB)
+ 	$(LD) $(LDFLAGS) $(JNIDISPATCH_OBJS) $(FFI_LIB) $(LIBS)
+-	$(STRIP) $@
+ 
+ $(TESTLIB): $(BUILD)/testlib.o
+ 	$(LD) $(LDFLAGS) $< $(LIBS)
