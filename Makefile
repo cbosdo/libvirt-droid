@@ -12,6 +12,7 @@ PATH:=$(BUILDDIR)/bin:$(BUILDDIR)/$(TARGET_TOOLCHAIN)/bin:$(PATH)
 
 # Disable shared libs for the dependencies to get a single libvirt.so containing it all
 CONFIGURE_FLAGS=--host=$(TARGET_TOOLCHAIN) --prefix $(BUILDDIR) --disable-shared
+DEBUG_FLAGS=-g -O0
 
 ifeq ($(strip $(NDK_HOME)),)
 ndk.setup:
@@ -46,7 +47,7 @@ $(XDR).patched: $(XDR).unpacked portablexdr-headers-fix.patch
 $(XDR).built: $(XDR).patched
 	cd $(XDR) && \
 	autoreconf -fi && \
-	./configure $(CONFIGURE_FLAGS) && \
+	./configure $(CONFIGURE_FLAGS) CFLAGS="$(DEBUG_FLAGS)" && \
 	make && \
 	make install
 	touch $@
@@ -76,6 +77,7 @@ $(LIBXML2).patched: $(LIBXML2).unpacked libxml-disable-tests.patch
 $(LIBXML2).built: $(LIBXML2).patched
 	cd $(LIBXML2) && \
 	autoreconf -fi && \
+	CFLAGS="$(DEBUG_FLAGS)" \
 	./configure $(CONFIGURE_FLAGS) --without-lzma --without-python && \
 	make && \
 	make install
@@ -99,6 +101,7 @@ $(GPGERR).unpacked: $(GPGERR).tar.bz2
 
 $(GPGERR).built: $(GPGERR).unpacked
 	cd $(GPGERR) && \
+	CFLAGS="$(DEBUG_FLAGS)" \
 	./configure $(CONFIGURE_FLAGS) && \
 	make && \
 	make install
@@ -122,6 +125,7 @@ $(GCRYPT).unpacked: $(GCRYPT).tar.bz2
 
 $(GCRYPT).built: $(GPGERR).built $(GCRYPT).unpacked
 	cd $(GCRYPT) && \
+	CFLAGS="$(DEBUG_FLAGS)" \
 	./configure $(CONFIGURE_FLAGS) && \
 	make && \
 	make install
@@ -147,6 +151,7 @@ $(LIBSSH).unpacked: $(LIBSSH).tar.gz
 
 $(LIBSSH).built: $(GCRYPT).built $(LIBSSH).unpacked
 	cd $(LIBSSH) && \
+	CFLAGS="$(DEBUG_FLAGS)" \
 	./configure $(CONFIGURE_FLAGS) && \
 	make && \
 	make install
@@ -179,7 +184,7 @@ $(LIBVIRT).patched: $(LIBVIRT).unpacked \
 
 $(LIBVIRT).built: ndk.setup $(XDR).built $(LIBXML2).built $(LIBSSH).built $(LIBVIRT).patched
 	cd $(LIBVIRT) && \
-	LDFLAGS="-L$(BUILDDIR)/lib" CFLAGS="-I$(BUILDDIR)/include" \
+	LDFLAGS="-L$(BUILDDIR)/lib" CFLAGS="-I$(BUILDDIR)/include $(DEBUG_FLAGS)" \
 	PKG_CONFIG_PATH="$(BUILDDIR)/lib/pkgconfig" \
 	./configure --host=arm-linux-androideabi --prefix $(BUILDDIR) --enable-static\
 				--with-pic --without-python \
@@ -262,19 +267,18 @@ $(LIBVIRT_JAVA).clean:
 
 libs.updated: $(LIBVIRT).built $(JNA).built $(LIBVIRT_JAVA).built 
 	rm -r LibvirtDroid/libs/*
-	# Create a jar with android-arm/libvirt.so
-	mkdir android-arm
-	cp $(realpath $(BUILDDIR)/lib/libvirt.so) android-arm/libvirt.so
-	zip -r LibvirtDroid/libs/libvirt-android.jar android-arm
-	rm -rf android-arm
-	# Copy jna.jar
-	cp $(JNA)/dist/jna.jar LibvirtDroid/libs/
-	# TODO Strip the useless libjnidispatch from jna.jar
+	mkdir LibvirtDroid/libs/armeabi
+	cp $(realpath $(BUILDDIR)/lib/libvirt.so) LibvirtDroid/libs/armeabi/libvirt.so
+	# Copy jna-min.jar and the arm jnidispatch.so
+	cp $(JNA)/dist/jna-min.jar LibvirtDroid/libs/
+	unzip $(JNA)/dist/android-arm.jar -d LibvirtDroid/libs/armeabi libjnidispatch.so
 	# Copy libvirt-java jar
 	cp $(LIBVIRT_JAVA)/target/libvirt-*.jar LibvirtDroid/libs/
 	touch $@
 
 all: libs.updated
+	cd LibvirtDroid && ant debug
+
 
 clean: ndk.clean \
 	   $(XDR).clean \
