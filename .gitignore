@@ -4,8 +4,10 @@
 *.tar.*z*
 ndk.setup
 libs.updated
+*.so
 LibvirtDroid/libs/*
 LibvirtDroid/bin
+LibvirtDroid/obj
 LibvirtDroid/gen
 LibvirtDroid/local.properties
 LibvirtDroid/.classpath

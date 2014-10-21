@@ -238,7 +238,7 @@ $(JNA).patched: $(JNA).unpacked jna-android.patch
 	touch $@
 
 $(JNA).built: $(JNA).patched
-	cd $(JNA) && ant dist
+	cd $(JNA) && ant -Dos.prefix=android-arm -Dbuild-native=true dist
 	touch $@
 
 $(JNA).clean:
@@ -267,18 +267,22 @@ $(LIBVIRT_JAVA).clean:
 
 libs.updated: $(LIBVIRT).built $(JNA).built $(LIBVIRT_JAVA).built 
 	rm -r LibvirtDroid/libs/*
+	rm -r LibvirtDroid/jni/*.so
 	mkdir LibvirtDroid/libs/armeabi
-	cp $(realpath $(BUILDDIR)/lib/libvirt.so) LibvirtDroid/libs/armeabi/libvirt.so
+	cp $(realpath $(BUILDDIR)/lib/libvirt.so) LibvirtDroid/jni/libvirt.so
 	# Copy jna-min.jar and the arm jnidispatch.so
 	cp $(JNA)/dist/jna-min.jar LibvirtDroid/libs/
-	unzip $(JNA)/dist/android-arm.jar -d LibvirtDroid/libs/armeabi libjnidispatch.so
+	cp $(JNA)/build/native-android-arm/libjnidispatch.so \
+		LibvirtDroid/jni/
 	# Copy libvirt-java jar
 	cp $(LIBVIRT_JAVA)/target/libvirt-*.jar LibvirtDroid/libs/
 	touch $@
 
-all: libs.updated
-	cd LibvirtDroid && ant debug
-
+all: ndk.setup libs.updated
+	cd LibvirtDroid && \
+	$(NDK_HOME)/ndk-build && \
+	ant debug
+	
 
 clean: ndk.clean \
 	   $(XDR).clean \
