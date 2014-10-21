@@ -8,6 +8,7 @@ import android.os.AsyncTask;
 public class ConnectTask extends AsyncTask<String, Integer, Connect> {
 
     private MainActivity mDialog;
+    private ConnectAuth mConnAuth;
 
 
     public ConnectTask(MainActivity dialog) {
@@ -19,12 +20,18 @@ public class ConnectTask extends AsyncTask<String, Integer, Connect> {
         Connect conn = null;
 
         try {
-            ConnectAuth connAuth = new ConnectAuth(mDialog);
-            conn = new Connect(params[0], connAuth, 0);
+            mConnAuth = new ConnectAuth(mDialog);
+            conn = new Connect(params[0], mConnAuth, 0);
+            System.out.println("Connection done");
         } catch (LibvirtException e) {
             System.out.println("exception caught: " + e);
             System.out.println(e.getError());
         }
         return conn;
+    }
+
+    @Override
+    protected void onPostExecute(Connect result) {
+        mDialog.onConnectFinished(result);
     }
 }

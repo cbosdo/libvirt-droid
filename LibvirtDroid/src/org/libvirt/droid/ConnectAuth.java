@@ -31,6 +31,8 @@ public class ConnectAuth extends org.libvirt.ConnectAuth {
             switch (mCred.type) {
             case VIR_CRED_ECHOPROMPT:
                 if (mCred.prompt.contains("(y/n)")) {
+                    String prompt = mCred.prompt.replace("(y/n)", "");
+                    builder.setMessage(prompt);
                     builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
 
                         public void onClick(DialogInterface dialog,
@@ -51,7 +53,6 @@ public class ConnectAuth extends org.libvirt.ConnectAuth {
                 break;
             case VIR_CRED_PASSPHRASE:
             case VIR_CRED_NOECHOPROMPT:
-                System.out.println("Passphrase type");
                 final EditText passTxt = new EditText(mActivity);
                 passTxt.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);
                 builder.setView(passTxt);
@@ -105,5 +106,4 @@ public class ConnectAuth extends org.libvirt.ConnectAuth {
 
         return 0;
     }
-
 }
