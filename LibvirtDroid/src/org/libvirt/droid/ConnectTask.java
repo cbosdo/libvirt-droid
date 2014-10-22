@@ -9,6 +9,7 @@ public class ConnectTask extends AsyncTask<String, Integer, Connect> {
 
     private MainActivity mDialog;
     private ConnectAuth mConnAuth;
+    private Connect mConn;
 
 
     public ConnectTask(MainActivity dialog) {
@@ -17,17 +18,17 @@ public class ConnectTask extends AsyncTask<String, Integer, Connect> {
 
     @Override
     protected Connect doInBackground(String... params) {
-        Connect conn = null;
+        mConn = null;
 
         try {
             mConnAuth = new ConnectAuth(mDialog);
-            conn = new Connect(params[0], mConnAuth, 0);
+            mConn = new Connect(params[0], mConnAuth, 0);
             System.out.println("Connection done");
         } catch (LibvirtException e) {
             System.out.println("exception caught: " + e);
             System.out.println(e.getError());
         }
-        return conn;
+        return mConn;
     }
 
     @Override

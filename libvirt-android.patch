@@ -177,7 +177,7 @@ index 7e841d1..41c650b 100644
  
  int virThreadLocalInit(virThreadLocalPtr l,
 diff --git a/src/util/virutil.c b/src/util/virutil.c
-index 5197969..806983d 100644
+index 5197969..a389c23 100644
 --- a/src/util/virutil.c
 +++ b/src/util/virutil.c
 @@ -49,7 +49,7 @@
@@ -246,8 +246,8 @@ index 5197969..806983d 100644
 +    return ret;
 +}
 +#endif
-+
  
++
 +#ifdef HAVE_GETGRGID_R
  static char *virGetGroupEnt(gid_t gid)
  {
@@ -387,10 +387,21 @@ index 64195a4..ad485f2 100644
  
  int
 diff --git a/src/rpc/virnetsshsession.c b/src/rpc/virnetsshsession.c
-index 7f47b29..57119f9 100644
+index 7f47b29..e3ac12d 100644
 --- a/src/rpc/virnetsshsession.c
 +++ b/src/rpc/virnetsshsession.c
-@@ -303,6 +303,7 @@ virNetSSHCheckHostKey(virNetSSHSessionPtr sess)
+@@ -217,6 +217,10 @@ virNetSSHKbIntCb(const char *name ATTRIBUTE_UNUSED,
+ 
+     priv->authCbErr = VIR_NET_SSH_AUTHCB_OK;
+ 
++    /* SSH server sometimes calls us with no prompt */
++    if (num_prompts == 0)
++        return;
++
+     /* find credential type for asking passwords */
+     for (i = 0; i < priv->cred->ncredtype; i++) {
+         if (priv->cred->credtype[i] == VIR_CRED_PASSPHRASE ||
+@@ -303,6 +307,7 @@ virNetSSHCheckHostKey(virNetSSHSessionPtr sess)
      virConnectCredential askKey;
      struct libssh2_knownhost *knownHostEntry = NULL;
      size_t i;
@@ -398,7 +409,7 @@ index 7f47b29..57119f9 100644
      char *hostnameStr = NULL;
  
      if (sess->hostKeyVerify == VIR_NET_SSH_HOSTKEY_VERIFY_IGNORE)
-@@ -345,12 +346,12 @@ virNetSSHCheckHostKey(virNetSSHSessionPtr sess)
+@@ -345,12 +350,12 @@ virNetSSHCheckHostKey(virNetSSHSessionPtr sess)
  
              for (i = 0; i < sess->cred->ncredtype; i++) {
                  if (sess->cred->credtype[i] == VIR_CRED_ECHOPROMPT) {
