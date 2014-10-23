@@ -211,7 +211,8 @@ $(LIBVIRT).built: ndk.setup $(XDR).built $(LIBXML2).built $(LIBSSH).built $(LIBV
 				--without-driver-modules --with-init_script=redhat \
 				--without-curl --without-dbus \
 				--without-libnl --disable-werror \
-				--without-test-suite && \
+				--without-test-suite \
+				--localstatedir=/var && \
 	make && \
 	make install
 	touch $@
