@@ -259,13 +259,19 @@ $(LIBVIRT_JAVA).unpacked: $(LIBVIRT_JAVA).tar.gz
 	tar xzf $<
 	touch $@
 
-$(LIBVIRT_JAVA).built: $(LIBVIRT_JAVA).unpacked
+$(LIBVIRT_JAVA).patched: $(LIBVIRT_JAVA).unpacked \
+						 libvirt-java-listAllDomains.patch
+	cd $(LIBVIRT_JAVA) && patch -p1 <../libvirt-java-listAllDomains.patch
+	touch $@
+
+$(LIBVIRT_JAVA).built: $(LIBVIRT_JAVA).patched
 	cd $(LIBVIRT_JAVA) && ant jar -Djar.dir=../$(JNA)/dist
 	touch $@
 
 $(LIBVIRT_JAVA).clean:
 	rm -f $(LIBVIRT_JAVA).built
 	rm -f $(LIBVIRT_JAVA).unpacked
+	rm -f $(LIBVIRT_JAVA).patched
 	rm -rf $(LIBVIRT_JAVA)
 
 libs.updated: $(LIBVIRT).built $(JNA).built $(LIBVIRT_JAVA).built 

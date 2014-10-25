@@ -1,0 +1,54 @@
+diff --git a/src/main/java/org/libvirt/Connect.java b/src/main/java/org/libvirt/Connect.java
+index fedc60e..9cfdfab 100644
+--- a/src/main/java/org/libvirt/Connect.java
++++ b/src/main/java/org/libvirt/Connect.java
+@@ -24,6 +24,7 @@ import com.sun.jna.Memory;
+ import com.sun.jna.NativeLong;
+ import com.sun.jna.Pointer;
+ import com.sun.jna.ptr.LongByReference;
++import com.sun.jna.ptr.PointerByReference;
+ 
+ /**
+  * The Connect object represents a connection to a local or remote
+@@ -757,6 +758,21 @@ public class Connect {
+         return ids;
+     }
+ 
++    public Domain[] listAllDomains(int flags) throws LibvirtException {
++        PointerByReference domainsRef = new PointerByReference();
++        int ret = libvirt.virConnectListAllDomains(VCP, domainsRef, flags);
++        processError(ret);
++
++        Pointer[] pointers  = domainsRef.getValue().getPointerArray(0);
++        Domain[] domains = new Domain[ret];
++        for (int i = 0; i < ret; i++) {
++            DomainPointer domainPtr = new DomainPointer();
++            domainPtr.setPointer(pointers[i]);
++            domains[i] = new Domain(this, domainPtr);
++        }
++        return domains;
++    }
++
+     /**
+      * Provides the list of names of interfaces on this host
+      *
+diff --git a/src/main/java/org/libvirt/jna/Libvirt.java b/src/main/java/org/libvirt/jna/Libvirt.java
+index 0e4c9fc..1331f80 100644
+--- a/src/main/java/org/libvirt/jna/Libvirt.java
++++ b/src/main/java/org/libvirt/jna/Libvirt.java
+@@ -8,6 +8,7 @@ import com.sun.jna.Platform;
+ import com.sun.jna.Pointer;
+ import com.sun.jna.ptr.IntByReference;
+ import com.sun.jna.ptr.LongByReference;
++import com.sun.jna.ptr.PointerByReference;
+ 
+ /**
+  * The libvirt interface which is exposed via JNA. The complete API is
+@@ -135,6 +136,7 @@ public interface Libvirt extends Library {
+     int virConnectListDefinedStoragePools(ConnectionPointer virConnectPtr, Pointer[] names, int maxnames);
+     int virConnectListDefinedInterfaces(ConnectionPointer virConnectPtr, Pointer[] name, int maxNames);
+     int virConnectListDomains(ConnectionPointer virConnectPtr, int[] ids, int maxnames);
++    int virConnectListAllDomains(ConnectionPointer virConnectPtr, PointerByReference domains, int flags);
+     int virConnectListInterfaces(ConnectionPointer virConnectPtr, Pointer[] name, int maxNames);
+     int virConnectListNetworks(ConnectionPointer virConnectPtr, Pointer[] name, int maxnames);
+     int virConnectListNWFilters(ConnectionPointer virConnectPtr, Pointer[] name, int maxnames);

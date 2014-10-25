@@ -66,17 +66,10 @@ public class MainActivity extends ListActivity implements OnSharedPreferenceChan
         mConn = conn;
 
         try {
-            String[] domNames = mConn.listDefinedDomains();
-            int domCount = domNames.length;
-            System.out.println("Got domains: " + domCount); //$NON-NLS-1$
+            Domain[] domains = mConn.listAllDomains(0);
+            System.out.println("Got domains: " + domains.length); //$NON-NLS-1$
 
             // TODO This requires to be moved to an AsyncTask
-            Domain[] domains = new Domain[domCount];
-            for (int i = 0; i < domCount; i++) {
-                String name = domNames[i];
-                domains[i] = mConn.domainLookupByName(name);
-            }
-
             DomainsAdapter adapter = new DomainsAdapter(this, domains);
             setListAdapter(adapter);
             adapter.notifyDataSetChanged();
