@@ -1,7 +1,9 @@
 package org.libvirt.droid;
 
 import org.libvirt.Connect;
+import org.libvirt.Domain;
 import org.libvirt.LibvirtException;
+
 import android.app.ListActivity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -11,7 +13,6 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.ArrayAdapter;
 
 public class MainActivity extends ListActivity implements OnSharedPreferenceChangeListener {
 
@@ -65,9 +66,18 @@ public class MainActivity extends ListActivity implements OnSharedPreferenceChan
         mConn = conn;
 
         try {
-            String[] domains = mConn.listDefinedDomains();
-            System.out.println("Got domains: " + domains.length); //$NON-NLS-1$
-            ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_activated_1, domains);
+            String[] domNames = mConn.listDefinedDomains();
+            int domCount = domNames.length;
+            System.out.println("Got domains: " + domCount); //$NON-NLS-1$
+
+            // TODO This requires to be moved to an AsyncTask
+            Domain[] domains = new Domain[domCount];
+            for (int i = 0; i < domCount; i++) {
+                String name = domNames[i];
+                domains[i] = mConn.domainLookupByName(name);
+            }
+
+            DomainsAdapter adapter = new DomainsAdapter(this, domains);
             setListAdapter(adapter);
             adapter.notifyDataSetChanged();
         } catch (LibvirtException e) {

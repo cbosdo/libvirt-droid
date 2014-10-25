@@ -5,4 +5,5 @@
     <string name="setting_cnx_uri">Connection URI</string>
     <string name="get_defined_domains_error">Failed to retrieve defined domains list</string>
     <string name="connection_error">Connection failed: </string>
+    <string name="domain_details_error">Failed to get domain details: </string>
 </resources>
