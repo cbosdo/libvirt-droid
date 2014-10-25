@@ -36,7 +36,7 @@ public class ConnectAuth extends org.libvirt.ConnectAuth {
                 if (mCred.prompt.contains(ynChoice)) {
                     String prompt = mCred.prompt.replace(ynChoice, new String());
                     builder.setMessage(prompt);
-                    builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                    builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
 
                         public void onClick(DialogInterface dialog,
                                             int which) {
@@ -44,7 +44,7 @@ public class ConnectAuth extends org.libvirt.ConnectAuth {
                             mDialogSemaphore.release();
                         }
                     });
-                    builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                    builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
 
                         public void onClick(DialogInterface dialog,
                                             int which) {
@@ -59,7 +59,7 @@ public class ConnectAuth extends org.libvirt.ConnectAuth {
                 final EditText passTxt = new EditText(mActivity);
                 passTxt.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);
                 builder.setView(passTxt);
-                builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
 
                     public void onClick(DialogInterface dialog,
                                         int which) {
