@@ -1,18 +1,20 @@
 package org.libvirt.droid;
 
 import org.libvirt.Connect;
+import org.libvirt.LibvirtException;
 
-import android.app.Activity;
+import android.app.ListActivity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.TextView;
+import android.widget.ArrayAdapter;
 
-public class MainActivity extends Activity implements OnSharedPreferenceChangeListener {
+public class MainActivity extends ListActivity implements OnSharedPreferenceChangeListener {
     private Connect mConn;
 
     /** Called when the activity is first created. */
@@ -59,12 +61,17 @@ public class MainActivity extends Activity implements OnSharedPreferenceChangeLi
     void onConnectFinished(Connect conn) {
 
         mConn = conn;
-        TextView resultText = (TextView)findViewById(R.id.text);
 
-        if (conn != null) {
-            resultText.setText("Connected!");
-        } else {
-            resultText.setText("Failed!");
+        try {
+            String[] domains = mConn.listDefinedDomains();
+            System.out.println("Got domains: " + domains.length);
+            int domsCount = mConn.numOfDefinedDomains();
+            System.out.println("num domains: " + domsCount);
+            ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_activated_1, domains);
+            setListAdapter(adapter);
+            adapter.notifyDataSetChanged();
+        } catch (LibvirtException e) {
+            Log.e("MainActivity", "Failed to retrieve defined domains list", e);
         }
     }
 
