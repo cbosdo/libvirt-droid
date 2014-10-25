@@ -2,8 +2,8 @@ package org.libvirt.droid;
 
 import org.libvirt.Connect;
 import org.libvirt.LibvirtException;
-
 import android.os.AsyncTask;
+import android.util.Log;
 
 public class ConnectTask extends AsyncTask<String, Integer, Connect> {
 
@@ -23,10 +23,10 @@ public class ConnectTask extends AsyncTask<String, Integer, Connect> {
         try {
             mConnAuth = new ConnectAuth(mDialog);
             mConn = new Connect(params[0], mConnAuth, 0);
-            System.out.println("Connection done");
+            System.out.println("Connection done"); //$NON-NLS-1$
         } catch (LibvirtException e) {
-            System.out.println("exception caught: " + e);
-            System.out.println(e.getError());
+            Log.e(MainActivity.class.getSimpleName(),
+                  mDialog.getString(R.string.connection_error) + e.getError(), e);
         }
         return mConn;
     }

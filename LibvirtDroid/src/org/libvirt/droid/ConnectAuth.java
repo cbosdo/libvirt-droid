@@ -1,11 +1,13 @@
 package org.libvirt.droid;
 
+import java.util.Locale;
 import java.util.concurrent.Semaphore;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.text.InputType;
+import android.util.Log;
 import android.widget.EditText;
 
 public class ConnectAuth extends org.libvirt.ConnectAuth {
@@ -30,14 +32,15 @@ public class ConnectAuth extends org.libvirt.ConnectAuth {
 
             switch (mCred.type) {
             case VIR_CRED_ECHOPROMPT:
-                if (mCred.prompt.contains("(y/n)")) {
-                    String prompt = mCred.prompt.replace("(y/n)", "");
+                String ynChoice = "(y/n)"; //$NON-NLS-1$
+                if (mCred.prompt.contains(ynChoice)) {
+                    String prompt = mCred.prompt.replace(ynChoice, new String());
                     builder.setMessage(prompt);
                     builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
 
                         public void onClick(DialogInterface dialog,
                                             int which) {
-                            mResponse = "y";
+                            mResponse = "y"; //$NON-NLS-1$
                             mDialogSemaphore.release();
                         }
                     });
@@ -45,7 +48,7 @@ public class ConnectAuth extends org.libvirt.ConnectAuth {
 
                         public void onClick(DialogInterface dialog,
                                             int which) {
-                            mResponse = "n";
+                            mResponse = "n"; //$NON-NLS-1$
                             mDialogSemaphore.release();
                         }
                     });
@@ -66,7 +69,9 @@ public class ConnectAuth extends org.libvirt.ConnectAuth {
                 });
                 break;
             default:
-                System.out.println("Unhandled cred: type=" + mCred.type + " prompt='" + mCred.prompt + "'");
+                String msg = String.format(Locale.US, "Unhandled cred: type=%d prompt='%s'", //$NON-NLS-1$
+                                           mCred.type, mCred.prompt);
+                Log.i(MainActivity.class.getName(), msg);
                 break;
             }
             AlertDialog dialog = builder.create();
