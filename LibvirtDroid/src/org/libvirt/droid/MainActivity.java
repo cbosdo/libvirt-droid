@@ -15,6 +15,7 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.TextView;
 
 public class MainActivity extends ListActivity implements OnSharedPreferenceChangeListener {
 
@@ -79,6 +80,12 @@ public class MainActivity extends ListActivity implements OnSharedPreferenceChan
 
         int domCount = domains.length;
         System.out.println("Got domains: " + domCount); //$NON-NLS-1$
+
+        if (domCount == 0) {
+            TextView msgView = ((TextView)findViewById(android.R.id.empty));
+            msgView.setText(R.string.no_item);
+        }
+
         ArrayList<DomainProxy> proxies = new ArrayList<DomainProxy>(domCount);
         for (Domain dom: domains) {
             try {
