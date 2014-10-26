@@ -1,5 +1,7 @@
 package org.libvirt.droid;
 
+import java.util.ArrayList;
+
 import org.libvirt.Connect;
 import org.libvirt.Domain;
 import org.libvirt.LibvirtException;
@@ -65,18 +67,33 @@ public class MainActivity extends ListActivity implements OnSharedPreferenceChan
 
         mConn = conn;
 
+        // TODO This requires to be moved to an AsyncTask
+        Domain[] domains = null;
         try {
-            Domain[] domains = mConn.listAllDomains(0);
-            System.out.println("Got domains: " + domains.length); //$NON-NLS-1$
-
-            // TODO This requires to be moved to an AsyncTask
-            DomainsAdapter adapter = new DomainsAdapter(this, domains);
-            setListAdapter(adapter);
-            adapter.notifyDataSetChanged();
+            domains = mConn.listAllDomains(0);
         } catch (LibvirtException e) {
             Log.e(MainActivity.class.getSimpleName(),
-                  getString(R.string.get_defined_domains_error), e);
+                  getString(R.string.get_defined_domains_error) + e.getError(), e);
+            return;
         }
+
+        int domCount = domains.length;
+        System.out.println("Got domains: " + domCount); //$NON-NLS-1$
+        ArrayList<DomainProxy> proxies = new ArrayList<DomainProxy>(domCount);
+        for (Domain dom: domains) {
+            try {
+                DomainProxy proxy = new DomainProxy(dom);
+                proxies.add(proxy);
+            } catch (LibvirtException e) {
+                Log.w(MainActivity.class.getSimpleName(),
+                      getString(R.string.domain_details_error) + e.getError(), e);
+            }
+        }
+
+        DomainsAdapter adapter = new DomainsAdapter(this,
+                proxies.toArray(new DomainProxy[proxies.size()]));
+        setListAdapter(adapter);
+        adapter.notifyDataSetChanged();
     }
 
 

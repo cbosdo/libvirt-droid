@@ -1,10 +1,6 @@
 package org.libvirt.droid;
 
-import org.libvirt.Domain;
-import org.libvirt.LibvirtException;
-
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,9 +8,9 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-public class DomainsAdapter extends ArrayAdapter<Domain> {
+public class DomainsAdapter extends ArrayAdapter<DomainProxy> {
 
-    public DomainsAdapter(Context context, Domain[] domains) {
+    public DomainsAdapter(Context context, DomainProxy[] domains) {
         super(context, android.R.layout.activity_list_item, domains);
     }
 
@@ -41,28 +37,21 @@ public class DomainsAdapter extends ArrayAdapter<Domain> {
             holder = (ItemHolder) v.getTag();
         }
 
-        Domain dom = getItem(position);
+        DomainProxy dom = getItem(position);
 
-        // TODO This may be too time consuming, this adapter should only handle
-        // pre-fetched domain data
-        try {
-            holder.name.setText(dom.getName());
+        holder.name.setText(dom.getName());
 
-            int iconId = R.drawable.domain_shutoff;
-            switch (dom.getInfo().state) {
-            case VIR_DOMAIN_RUNNING:
-                iconId = R.drawable.domain_running;
-                break;
-            case VIR_DOMAIN_PAUSED:
-                iconId = R.drawable.domain_paused;
-                break;
-            default:
-            }
-            holder.image.setImageResource(iconId);
-        } catch (LibvirtException e) {
-            Log.w(MainActivity.class.getSimpleName(),
-                    getContext().getString(R.string.domain_details_error) + e.getError(), e);
+        int iconId = R.drawable.domain_shutoff;
+        switch (dom.getInfo().state) {
+        case VIR_DOMAIN_RUNNING:
+            iconId = R.drawable.domain_running;
+            break;
+        case VIR_DOMAIN_PAUSED:
+            iconId = R.drawable.domain_paused;
+            break;
+        default:
         }
+        holder.image.setImageResource(iconId);
 
         return v;
     }
