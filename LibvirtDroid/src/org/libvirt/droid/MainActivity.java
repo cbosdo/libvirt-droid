@@ -1,10 +1,6 @@
 package org.libvirt.droid;
 
-import java.util.ArrayList;
-
 import org.libvirt.Connect;
-import org.libvirt.Domain;
-import org.libvirt.LibvirtException;
 
 import android.app.ListActivity;
 import android.content.Intent;
@@ -12,7 +8,6 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
@@ -46,6 +41,12 @@ public class MainActivity extends ListActivity implements OnSharedPreferenceChan
         }
     }
 
+    public void refreshDomains() {
+        if (mConn != null) {
+            new GetDomainTask(MainActivity.this).execute(mConn);
+        }
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.activity_main, menu);
@@ -65,44 +66,20 @@ public class MainActivity extends ListActivity implements OnSharedPreferenceChan
     }
 
     void onConnectFinished(Connect conn) {
-
         mConn = conn;
-
-        // TODO This requires to be moved to an AsyncTask
-        Domain[] domains = null;
-        try {
-            domains = mConn.listAllDomains(0);
-        } catch (LibvirtException e) {
-            Log.e(MainActivity.class.getSimpleName(),
-                  getString(R.string.get_defined_domains_error) + e.getError(), e);
-            return;
-        }
-
-        int domCount = domains.length;
-        System.out.println("Got domains: " + domCount); //$NON-NLS-1$
-
-        if (domCount == 0) {
-            TextView msgView = ((TextView)findViewById(android.R.id.empty));
-            msgView.setText(R.string.no_item);
-        }
-
-        ArrayList<DomainProxy> proxies = new ArrayList<DomainProxy>(domCount);
-        for (Domain dom: domains) {
-            try {
-                DomainProxy proxy = new DomainProxy(dom);
-                proxies.add(proxy);
-            } catch (LibvirtException e) {
-                Log.w(MainActivity.class.getSimpleName(),
-                      getString(R.string.domain_details_error) + e.getError(), e);
-            }
-        }
-
-        DomainsAdapter adapter = new DomainsAdapter(this,
-                proxies.toArray(new DomainProxy[proxies.size()]));
-        setListAdapter(adapter);
-        adapter.notifyDataSetChanged();
+        refreshDomains();
     }
 
+    void onGetDomainsFinished(DomainProxy[] domains) {
+        if (domains.length == 0) {
+            TextView msgView = ((TextView)findViewById(android.R.id.empty));
+            msgView.setText(R.string.no_item);
+        } else {
+            DomainsAdapter adapter = new DomainsAdapter(this, domains);
+            setListAdapter(adapter);
+            adapter.notifyDataSetChanged();
+        }
+    }
 
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
             String key) {
